@@ -49,11 +49,16 @@ function draw() {
 
   // 6. 處理手部辨識繪圖
   if (hands.length > 0) {
-    // 更新玩家目前的手勢
-    userChoice = recognizeGesture(hands[0]);
+    // 辨識目前手勢
+    let currentGesture = recognizeGesture(hands[0]);
 
-    // 當在等待狀態且偵測到「讚」時，啟動倒數
-    if (gameState === "WAITING" && userChoice === "讚") {
+    // 在非結果畫面時，即時更新玩家顯示的手勢
+    if (gameState !== "RESULT") {
+      userChoice = currentGesture;
+    }
+
+    // 功能需求：比讚（👍）啟動遊戲
+    if (gameState === "WAITING" && currentGesture === "讚") {
       gameState = "COUNTING";
       timer = 3;
       lastTick = millis();
@@ -72,7 +77,7 @@ function draw() {
 
       // 設定連線顏色與粗細 (與圓圈顏色同步)
       stroke(hand.handedness === "Left" ? [255, 0, 255] : [255, 255, 0]);
-      strokeWeight(4);
+      strokeWeight(2);
 
       // 繪製每一段手指的連線
       for (let part of fingerParts) {
@@ -84,27 +89,6 @@ function draw() {
           let x2 = map(p2.x, 0, video.width, xOffset, xOffset + displayW);
           let y2 = map(p2.y, 0, video.height, yOffset, yOffset + displayH);
           line(x1, y1, x2, y2);
-        }
-      }
-
-      if (hand.confidence > 0.1) {
-        for (let i = 0; i < hand.keypoints.length; i++) {
-          let keypoint = hand.keypoints[i];
-
-          // 關鍵步驟：將偵測到的座標映射到 50% 大小且置中的畫面上
-          // 模型原始座標是以 video 的寬高為準，需轉換至畫布上的實際顯示區域
-          let mappedX = map(keypoint.x, 0, video.width, xOffset, xOffset + displayW);
-          let mappedY = map(keypoint.y, 0, video.height, yOffset, yOffset + displayH);
-
-          // 區分左右手顏色
-          if (hand.handedness == "Left") {
-            fill(255, 0, 255); // 左手粉色
-          } else {
-            fill(255, 255, 0); // 右手黃色
-          }
-
-          noStroke();
-          circle(mappedX, mappedY, 16);
         }
       }
     }
@@ -119,8 +103,8 @@ function recognizeGesture(hand) {
   // 取得關鍵點 (Index: 8-Tip, 6-Pip; Middle: 12-Tip, 10-Pip; etc.)
   let k = hand.keypoints;
   
-  // 判斷手指是否伸直或朝上 (y 座標越小代表在畫面上方)
-  let thumbUp = k[4].y < k[3].y && k[4].y < k[2].y; // 大拇指尖端高於關節
+  // 偵測「讚」：大拇指指尖高於關節，且其他四指收起
+  let thumbUp = k[4].y < k[3].y && k[4].y < k[2].y;
   let indexUp = k[8].y < k[6].y;
   let middleUp = k[12].y < k[10].y;
   let ringUp = k[16].y < k[14].y;
@@ -144,7 +128,7 @@ function drawUI() {
   if (gameState === "WAITING") {
     textSize(20);
     fill(0, 255, 0);
-    text("請將手放在框內，比個『👍』或點擊畫面開始", width / 2, height - 60);
+    text("請將手放在框內，比個『👍』開始遊戲", width / 2, height - 60);
   }
   
   // 顯示玩家與 AI 的狀態
