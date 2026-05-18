@@ -49,7 +49,44 @@ function draw() {
 
   // 6. 處理手部辨識繪圖
   if (hands.length > 0) {
+    // 更新玩家目前的手勢
+    userChoice = recognizeGesture(hands[0]);
+
+    // 當在等待狀態且偵測到「讚」時，啟動倒數
+    if (gameState === "WAITING" && userChoice === "讚") {
+      gameState = "COUNTING";
+      timer = 3;
+      lastTick = millis();
+      aiChoice = "?";
+    }
+
     for (let hand of hands) {
+      // 定義手指連線的路徑群組
+      let fingerParts = [
+        [0, 1, 2, 3, 4],     // 大拇指
+        [5, 6, 7, 8],        // 食指
+        [9, 10, 11, 12],     // 中指
+        [13, 14, 15, 16],    // 無名指
+        [17, 18, 19, 20]     // 小拇指
+      ];
+
+      // 設定連線顏色與粗細 (與圓圈顏色同步)
+      stroke(hand.handedness === "Left" ? [255, 0, 255] : [255, 255, 0]);
+      strokeWeight(4);
+
+      // 繪製每一段手指的連線
+      for (let part of fingerParts) {
+        for (let i = 0; i < part.length - 1; i++) {
+          let p1 = hand.keypoints[part[i]];
+          let p2 = hand.keypoints[part[i + 1]];
+          let x1 = map(p1.x, 0, video.width, xOffset, xOffset + displayW);
+          let y1 = map(p1.y, 0, video.height, yOffset, yOffset + displayH);
+          let x2 = map(p2.x, 0, video.width, xOffset, xOffset + displayW);
+          let y2 = map(p2.y, 0, video.height, yOffset, yOffset + displayH);
+          line(x1, y1, x2, y2);
+        }
+      }
+
       if (hand.confidence > 0.1) {
         for (let i = 0; i < hand.keypoints.length; i++) {
           let keypoint = hand.keypoints[i];
@@ -82,12 +119,14 @@ function recognizeGesture(hand) {
   // 取得關鍵點 (Index: 8-Tip, 6-Pip; Middle: 12-Tip, 10-Pip; etc.)
   let k = hand.keypoints;
   
-  // 判斷手指是否伸直 (y 座標越小代表越高)
+  // 判斷手指是否伸直或朝上 (y 座標越小代表在畫面上方)
+  let thumbUp = k[4].y < k[3].y && k[4].y < k[2].y; // 大拇指尖端高於關節
   let indexUp = k[8].y < k[6].y;
   let middleUp = k[12].y < k[10].y;
   let ringUp = k[16].y < k[14].y;
   let pinkyUp = k[20].y < k[18].y;
 
+  if (thumbUp && !indexUp && !middleUp && !ringUp && !pinkyUp) return "讚";
   if (indexUp && middleUp && ringUp && pinkyUp) return "布";
   if (indexUp && middleUp && !ringUp && !pinkyUp) return "剪刀";
   if (!indexUp && !middleUp && !ringUp && !pinkyUp) return "石頭";
@@ -105,7 +144,7 @@ function drawUI() {
   if (gameState === "WAITING") {
     textSize(20);
     fill(0, 255, 0);
-    text("請將手放在框內，點擊畫面開始", width / 2, height - 60);
+    text("請將手放在框內，比個『👍』或點擊畫面開始", width / 2, height - 60);
   }
   
   // 顯示玩家與 AI 的狀態
