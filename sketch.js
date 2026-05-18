@@ -104,20 +104,21 @@ function draw() {
 
 // 手勢辨識邏輯
 function recognizeGesture(hand) {
-  // 取得關鍵點 (Index: 8-Tip, 6-Pip; Middle: 12-Tip, 10-Pip; etc.)
+  // 取得關鍵點 (Tip: 4, 8, 12, 16, 20 | MCP: 2, 5, 9, 13, 17)
   let k = hand.keypoints;
   
-  // 偵測「讚」：大拇指指尖高於關節，且其他四指收起
-  let thumbUp = k[4].y < k[3].y && k[4].y < k[2].y;
-  let indexUp = k[8].y < k[6].y;
-  let middleUp = k[12].y < k[10].y;
-  let ringUp = k[16].y < k[14].y;
-  let pinkyUp = k[20].y < k[18].y;
+  // 優化辨識邏輯：比較指尖與根部 MCP 關節的 Y 座標
+  // 在全螢幕模式下，y 座標越小代表越高
+  let thumbUp = k[4].y < k[2].y; 
+  let indexUp = k[8].y < k[5].y;
+  let middleUp = k[12].y < k[9].y;
+  let ringUp = k[16].y < k[13].y;
+  let pinkyUp = k[20].y < k[17].y;
 
   if (thumbUp && !indexUp && !middleUp && !ringUp && !pinkyUp) return "讚";
   if (indexUp && middleUp && ringUp && pinkyUp) return "布";
   if (indexUp && middleUp && !ringUp && !pinkyUp) return "剪刀";
-  if (!indexUp && !middleUp && !ringUp && !pinkyUp) return "石頭";
+  if (!thumbUp && !indexUp && !middleUp && !ringUp && !pinkyUp) return "石頭";
   return "未定義";
 }
 
@@ -198,9 +199,19 @@ function drawUI() {
       fill(255);
       text(`${timeLeft} 秒後自動開始下一局...`, width / 2, height / 2 + 100);
     } else {
-      textSize(20);
-      fill(200);
-      text("比賽結束！點擊畫面或比『👍』重新挑戰", width / 2, height / 2 + 100);
+      // 繪製重新遊玩按鈕
+      let btnW = 200;
+      let btnH = 60;
+      let btnX = width / 2 - btnW / 2;
+      let btnY = height / 2 + 80;
+      
+      stroke(255);
+      fill(0, 150, 255);
+      rect(btnX, btnY, btnW, btnH, 10);
+      noStroke();
+      fill(255);
+      textSize(24);
+      text("重新遊玩", width / 2, btnY + btnH / 2);
     }
   }
 }
@@ -270,8 +281,17 @@ function playAI() {
 }
 
 function mousePressed() {
-  if (gameState === "WAITING" || gameState === "RESULT") {
+  if (gameState === "WAITING") {
     startGame();
+  } else if (gameState === "RESULT" && matchWinner !== "") {
+    // 檢查是否點擊在「重新遊玩」按鈕範圍內
+    let btnW = 200;
+    let btnH = 60;
+    let btnX = width / 2 - btnW / 2;
+    let btnY = height / 2 + 80;
+    if (mouseX > btnX && mouseX < btnX + btnW && mouseY > btnY && mouseY < btnY + btnH) {
+      startGame();
+    }
   }
 }
 
