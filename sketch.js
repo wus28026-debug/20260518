@@ -14,6 +14,7 @@ let choices = ["石頭", "剪刀", "布"];
 // 三戰二勝變數
 let playerScore = 0;
 let aiScore = 0;
+let roundCount = 0; // 當前局數
 let matchWinner = ""; // "PLAYER", "AI"
 
 // 定義手指連線的路徑群組 (0-4 大拇指, 5-8 食指, 9-12 中指, 13-16 無名指, 17-20 小拇指)
@@ -73,16 +74,7 @@ function draw() {
 
     // 功能需求：比讚（👍）啟動遊戲
     if (gameState === "WAITING" && currentGesture === "讚") {
-      // 如果上一場比賽結束了，重置比分
-      if (matchWinner !== "") {
-        playerScore = 0;
-        aiScore = 0;
-        matchWinner = "";
-      }
-      gameState = "COUNTING";
-      timer = 3;
-      lastTick = millis();
-      aiChoice = "?";
+      startGame();
     }
 
     for (let hand of hands) {
@@ -178,8 +170,10 @@ function drawUI() {
   
   // 顯示當前比分 (三戰二勝)
   textSize(28);
-  fill(255, 215, 0);
-  text(`比分 ${playerScore} : ${aiScore}`, width / 2, 80);
+  textStyle(BOLD);
+  fill(255, 255, 0);
+  text(`第 ${roundCount} 局  |  比分 ${playerScore} : ${aiScore}`, width / 2, 80);
+  textStyle(NORMAL);
 
   // 顯示玩家與 AI 的狀態
   textSize(32);
@@ -193,12 +187,21 @@ function drawUI() {
     fill(255, 255, 0);
     text(timer, width / 2, height / 2);
   } else if (gameState === "RESULT") {
-    textSize(64);
+    textSize(80);
     fill(255, 200, 0);
     text(resultMessage, width / 2, height / 2);
-    textSize(16);
-    fill(150);
-    text("點擊畫面重新開始", width / 2, height / 2 + 80);
+    
+    // 顯示自動進入下一局的倒數
+    if (matchWinner === "") {
+      let timeLeft = Math.max(0, Math.ceil((3000 - (millis() - lastTick)) / 1000));
+      textSize(24);
+      fill(255);
+      text(`${timeLeft} 秒後自動開始下一局...`, width / 2, height / 2 + 100);
+    } else {
+      textSize(20);
+      fill(200);
+      text("比賽結束！點擊畫面或比『👍』重新挑戰", width / 2, height / 2 + 100);
+    }
   }
 }
 
@@ -211,7 +214,30 @@ function handleTimer() {
         playAI();
       }
     }
+  } else if (gameState === "RESULT") {
+    // 修改：只要還沒人拿到兩勝，就持續自動進入下一局
+    if (matchWinner === "") {
+      if (millis() - lastTick > 3000) {
+        roundCount++;
+        gameState = "COUNTING";
+        timer = 3;
+        lastTick = millis();
+        aiChoice = "?";
+      }
+    }
   }
+}
+
+function startGame() {
+  playerScore = 0;
+  aiScore = 0;
+  roundCount = 1;
+  matchWinner = "";
+  gameState = "COUNTING";
+  timer = 3;
+  lastTick = millis();
+  aiChoice = "?";
+  resultMessage = "準備好了嗎？";
 }
 
 function playAI() {
@@ -245,16 +271,7 @@ function playAI() {
 
 function mousePressed() {
   if (gameState === "WAITING" || gameState === "RESULT") {
-    // 如果一場三戰二勝結束了，點擊後重置比分重新開始
-    if (matchWinner !== "") {
-      playerScore = 0;
-      aiScore = 0;
-      matchWinner = "";
-    }
-    gameState = "COUNTING";
-    timer = 3;
-    lastTick = millis();
-    aiChoice = "?";
+    startGame();
   }
 }
 
