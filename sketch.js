@@ -11,6 +11,11 @@ let aiChoice = "";
 let resultMessage = "準備好了嗎？";
 let choices = ["石頭", "剪刀", "布"];
 
+// 三戰二勝變數
+let playerScore = 0;
+let aiScore = 0;
+let matchWinner = ""; // "PLAYER", "AI"
+
 // 定義手指連線的路徑群組 (0-4 大拇指, 5-8 食指, 9-12 中指, 13-16 無名指, 17-20 小拇指)
 const FINGER_PARTS = [
   [0, 1, 2, 3, 4],
@@ -68,6 +73,12 @@ function draw() {
 
     // 功能需求：比讚（👍）啟動遊戲
     if (gameState === "WAITING" && currentGesture === "讚") {
+      // 如果上一場比賽結束了，重置比分
+      if (matchWinner !== "") {
+        playerScore = 0;
+        aiScore = 0;
+        matchWinner = "";
+      }
       gameState = "COUNTING";
       timer = 3;
       lastTick = millis();
@@ -145,6 +156,19 @@ function drawUI() {
     text("請比出『👍』或 點擊畫面 開始遊戲", width / 2, height * 0.75);
     return; // 封面狀態下不顯示其他的狀態資訊
   }
+  
+  // 特效處理：若最終勝負已定
+  if (matchWinner === "PLAYER") {
+    // 獲勝特效：金色紙屑粒子
+    for(let i=0; i<15; i++) {
+      fill(random(200, 255), random(150, 255), 0);
+      circle(random(width), random(height), random(5, 12));
+    }
+  } else if (matchWinner === "AI") {
+    // 失敗特效：紅色閃爍背景
+    fill(255, 0, 0, sin(frameCount * 0.2) * 40 + 40);
+    rect(0, 0, width, height);
+  }
 
   // 遊戲進行中的標題
   textSize(24);
@@ -152,6 +176,11 @@ function drawUI() {
   text("AI 猜拳大賽", width / 2, 40);
   textStyle(NORMAL);
   
+  // 顯示當前比分 (三戰二勝)
+  textSize(28);
+  fill(255, 215, 0);
+  text(`比分 ${playerScore} : ${aiScore}`, width / 2, 80);
+
   // 顯示玩家與 AI 的狀態
   textSize(32);
   fill(255);
@@ -187,6 +216,7 @@ function handleTimer() {
 
 function playAI() {
   aiChoice = random(choices);
+  
   if (userChoice === aiChoice) {
     resultMessage = "平手！";
   } else if (
@@ -194,15 +224,33 @@ function playAI() {
     (userChoice === "剪刀" && aiChoice === "布") ||
     (userChoice === "布" && aiChoice === "石頭")
   ) {
-    resultMessage = "你贏了！🏆";
+    playerScore++;
+    resultMessage = "你贏了這一局！";
   } else {
-    resultMessage = "你輸了 🤖";
+    aiScore++;
+    resultMessage = "AI 贏了這一局";
   }
+
+  // 檢查是否達成三戰二勝 (先拿2分者勝)
+  if (playerScore === 2) {
+    matchWinner = "PLAYER";
+    resultMessage = "🏆 最終大勝！ 🏆";
+  } else if (aiScore === 2) {
+    matchWinner = "AI";
+    resultMessage = "🤖 AI 獲得最終勝利";
+  }
+  
   gameState = "RESULT";
 }
 
 function mousePressed() {
   if (gameState === "WAITING" || gameState === "RESULT") {
+    // 如果一場三戰二勝結束了，點擊後重置比分重新開始
+    if (matchWinner !== "") {
+      playerScore = 0;
+      aiScore = 0;
+      matchWinner = "";
+    }
     gameState = "COUNTING";
     timer = 3;
     lastTick = millis();
