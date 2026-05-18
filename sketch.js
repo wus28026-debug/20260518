@@ -11,6 +11,15 @@ let aiChoice = "";
 let resultMessage = "準備好了嗎？";
 let choices = ["石頭", "剪刀", "布"];
 
+// 定義手指連線的路徑群組 (0-4 大拇指, 5-8 食指, 9-12 中指, 13-16 無名指, 17-20 小拇指)
+const FINGER_PARTS = [
+  [0, 1, 2, 3, 4],
+  [5, 6, 7, 8],
+  [9, 10, 11, 12],
+  [13, 14, 15, 16],
+  [17, 18, 19, 20]
+];
+
 function preload() {
   // 初始化 HandPose 模型，並設定影像水平翻轉（鏡像）
   handPose = ml5.handPose({ flipped: true });
@@ -66,21 +75,13 @@ function draw() {
     }
 
     for (let hand of hands) {
-      // 定義手指連線的路徑群組
-      let fingerParts = [
-        [0, 1, 2, 3, 4],     // 大拇指
-        [5, 6, 7, 8],        // 食指
-        [9, 10, 11, 12],     // 中指
-        [13, 14, 15, 16],    // 無名指
-        [17, 18, 19, 20]     // 小拇指
-      ];
-
-      // 設定連線顏色與粗細 (與圓圈顏色同步)
+      // 設定骨骼連線顏色與粗細
       stroke(hand.handedness === "Left" ? [255, 0, 255] : [255, 255, 0]);
-      strokeWeight(2);
+      strokeWeight(2); // 細線
+      noFill();
 
       // 繪製每一段手指的連線
-      for (let part of fingerParts) {
+      for (let part of FINGER_PARTS) {
         for (let i = 0; i < part.length - 1; i++) {
           let p1 = hand.keypoints[part[i]];
           let p2 = hand.keypoints[part[i + 1]];
@@ -121,15 +122,35 @@ function drawUI() {
   textAlign(CENTER, CENTER);
   fill(255);
   
-  // 顯示標題與提示
-  textSize(24);
-  text("AI 猜拳大賽", width / 2, 40);
-  
   if (gameState === "WAITING") {
-    textSize(20);
-    fill(0, 255, 0);
-    text("請將手放在框內，比個『👍』開始遊戲", width / 2, height - 60);
+    // 1. 封面背景遮罩 (讓攝影機畫面變暗以凸顯文字)
+    fill(0, 0, 0, 180);
+    noStroke();
+    rect(0, 0, width, height);
+    
+    // 2. 繪製主標題
+    fill(255, 215, 0); // 金色
+    textSize(64);
+    textStyle(BOLD);
+    text("手勢猜拳大賽", width / 2, height * 0.4);
+    
+    // 3. 繪製裝飾圖示
+    textStyle(NORMAL);
+    textSize(60);
+    text("✊  ✌️  🖐️", width / 2, height * 0.55);
+    
+    // 4. 開始提示
+    fill(0, 255, 127); // 亮綠色
+    textSize(24);
+    text("請比出『👍』或 點擊畫面 開始遊戲", width / 2, height * 0.75);
+    return; // 封面狀態下不顯示其他的狀態資訊
   }
+
+  // 遊戲進行中的標題
+  textSize(24);
+  textStyle(BOLD);
+  text("AI 猜拳大賽", width / 2, 40);
+  textStyle(NORMAL);
   
   // 顯示玩家與 AI 的狀態
   textSize(32);
